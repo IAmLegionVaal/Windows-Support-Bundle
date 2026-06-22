@@ -4,6 +4,16 @@ A single-run PowerShell diagnostic collector for Windows support, troubleshootin
 
 > **Testing note:** This was tested by me to be working. User experience may vary.
 
+## One-click use
+
+1. Download this repository as a ZIP and extract it, or clone it.
+2. Double-click `Run-OneClick.bat`.
+3. Approve the Windows administrator prompt.
+4. Wait for the collection to finish and review the displayed exit code.
+5. Open `C:\Users\Public\Documents\WindowsSupportBundles` to find the generated ZIP.
+
+There is no menu. The launcher runs the collector directly and keeps the result window open.
+
 ## Actual script included
 
 The repository includes the functional collector:
@@ -37,9 +47,7 @@ The script does **not** collect passwords, browser data, saved credentials, emai
 - Windows PowerShell 5.1 or PowerShell 7+
 - Administrative PowerShell is recommended for the most complete results
 
-## Quick start
-
-Open PowerShell in the cloned repository and run:
+## PowerShell use
 
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
@@ -60,39 +68,12 @@ WindowsSupportBundle_PC-NAME_20260622_183000.zip
 
 ## Examples
 
-Collect the default three days of event information:
-
 ```powershell
 .\Collect-WindowsSupportBundle.ps1
-```
-
-Collect seven days and keep both the ZIP and working folder:
-
-```powershell
 .\Collect-WindowsSupportBundle.ps1 -EventLogDays 7 -KeepWorkingFolder
-```
-
-Write the bundle to another directory:
-
-```powershell
 .\Collect-WindowsSupportBundle.ps1 -OutputPath 'C:\Support\Bundles'
-```
-
-Skip event logs:
-
-```powershell
 .\Collect-WindowsSupportBundle.ps1 -SkipEventLogs
-```
-
-Create an uncompressed evidence folder:
-
-```powershell
 .\Collect-WindowsSupportBundle.ps1 -SkipCompression
-```
-
-Preview the target operation without collecting anything:
-
-```powershell
 .\Collect-WindowsSupportBundle.ps1 -WhatIf
 ```
 
@@ -140,16 +121,7 @@ A code of `2` can occur when a Windows edition, device type, permissions level o
 
 This collector is read-only with respect to Windows configuration. It creates report files and may delete only its own temporary working folder after validating the ZIP archive.
 
-Generated bundles can contain:
-
-- Computer and user names
-- BIOS and disk serial numbers
-- Local IP and MAC addresses
-- Installed software
-- Service account names
-- Windows event messages
-
-Always review the output before uploading or sending it to another person. Do not publish real support bundles in this repository.
+Generated bundles can contain computer and user names, BIOS and disk serial numbers, local IP and MAC addresses, installed software, service account names and Windows event messages. Always review the output before uploading or sending it to another person. Do not publish real support bundles in this repository.
 
 ## Disclaimer
 
