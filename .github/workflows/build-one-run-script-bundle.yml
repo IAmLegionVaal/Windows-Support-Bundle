@@ -1,0 +1,80 @@
+name: Build One-Run Script Bundle
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  build-bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build script folder
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ROOT="Windows-One-Run-Fix-Scripts"
+          SCRIPT_DIR="$ROOT/scripts"
+          mkdir -p "$SCRIPT_DIR"
+
+          cat > /tmp/script-map.txt <<'EOF'
+          Windows-Support-Bundle|Collect-WindowsSupportBundle.ps1
+          Windows-System-Health-Repair|Repair-WindowsSystemHealth.ps1
+          Windows-Update-Repair|Repair-WindowsUpdate.ps1
+          Windows-Network-Repair|Repair-WindowsNetwork.ps1
+          Windows-Security-Audit|Invoke-WindowsSecurityAudit.ps1
+          Windows-Print-Services-Repair|Repair-WindowsPrintServices.ps1
+          OneDrive-Repair|Repair-OneDrive.ps1
+          Microsoft-Store-Repair|Repair-MicrosoftStore.ps1
+          Windows-Application-Updater|Update-WindowsApplications.ps1
+          Windows-PC-Provisioning|Initialize-WindowsPC.ps1
+          Windows-Time-Repair|Repair-WindowsTime.ps1
+          Windows-Search-Repair|Repair-WindowsSearch.ps1
+          Windows-RDP-Repair|Repair-WindowsRDP.ps1
+          Windows-Bluetooth-Repair|Repair-WindowsBluetooth.ps1
+          Windows-Audio-Repair|Repair-WindowsAudio.ps1
+          Windows-Activation-Diagnostics|Get-WindowsActivationDiagnostics.ps1
+          Windows-Disk-Optimization|Optimize-WindowsDisk.ps1
+          Windows-Large-File-Finder|Find-WindowsLargeFiles.ps1
+          Windows-Startup-Analyzer|Analyze-WindowsStartup.ps1
+          Windows-Performance-Analyzer|Analyze-WindowsPerformance.ps1
+          Windows-BSOD-Analyzer|Analyze-WindowsBSOD.ps1
+          Remote-Work-Readiness-Test|Test-RemoteWorkReadiness.ps1
+          Windows-User-Profile-Repair|Repair-WindowsUserProfile.ps1
+          Windows-Stale-Profile-Cleanup|Remove-StaleWindowsProfiles.ps1
+          Windows-Local-Account-Audit|Invoke-WindowsLocalAccountAudit.ps1
+          Windows-WMI-Repair|Repair-WindowsWMI.ps1
+          Windows-Firewall-Repair|Repair-WindowsFirewall.ps1
+          Windows-Driver-Backup|Export-WindowsDrivers.ps1
+          Windows-User-Data-Migration|Move-WindowsUserData.ps1
+          Windows-PC-Handover-Test|Test-WindowsPCHandover.ps1
+          EOF
+
+          printf '# Windows One-Run Fix Scripts\n\n' > "$ROOT/README.md"
+          printf 'A consolidated folder containing the latest main PowerShell script from each recent single-run Windows support repository.\n\n' >> "$ROOT/README.md"
+          printf '## Included scripts\n\n' >> "$ROOT/README.md"
+
+          while IFS='|' read -r repo file; do
+            echo "Downloading $repo/$file"
+            url="https://raw.githubusercontent.com/IAmLegionVaal/${repo}/main/${file}"
+            curl --fail --location --silent --show-error "$url" --output "$SCRIPT_DIR/$file"
+            printf -- '- `%s` — [%s](https://github.com/IAmLegionVaal/%s)\n' "$file" "$repo" "$repo" >> "$ROOT/README.md"
+          done < /tmp/script-map.txt
+
+          printf '\n## Usage\n\nOpen PowerShell as Administrator, change to the `scripts` directory, and run the required script. Review each script help before enabling repair parameters.\n\n' >> "$ROOT/README.md"
+          printf '> These scripts use safe defaults where possible. Some repair actions require explicit parameters and administrator rights.\n' >> "$ROOT/README.md"
+
+          cp /tmp/script-map.txt "$ROOT/SCRIPT-MAP.txt"
+          find "$SCRIPT_DIR" -type f -name '*.ps1' -print0 | sort -z | xargs -0 sha256sum > "$ROOT/SHA256SUMS.txt"
+          zip -r "Windows-One-Run-Fix-Scripts.zip" "$ROOT"
+
+      - name: Upload bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: Windows-One-Run-Fix-Scripts
+          path: Windows-One-Run-Fix-Scripts.zip
+          if-no-files-found: error
+          retention-days: 7
