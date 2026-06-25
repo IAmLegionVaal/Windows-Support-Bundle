@@ -1,51 +1,51 @@
 # Windows Support Bundle
 
-A single-run PowerShell diagnostic collector for Windows support, troubleshooting and escalation. It gathers useful system evidence into a timestamped folder and creates a ZIP archive that can be reviewed or attached to a support case.
-
-> **Testing note:** This was tested by me to be working. User experience may vary.
+A single-run PowerShell diagnostic collector for Windows support, troubleshooting and escalation. It gathers system evidence into a timestamped folder and optionally creates a ZIP archive for review.
 
 ## One-click use
 
-1. Download this repository as a ZIP and extract it, or clone it.
+1. Download and extract the repository.
 2. Double-click `Run-OneClick.bat`.
-3. Approve the Windows administrator prompt.
-4. Wait for the collection to finish and review the displayed exit code.
-5. Open `C:\Users\Public\Documents\WindowsSupportBundles` to find the generated ZIP.
+3. Approve the administrator prompt.
+4. Review the exit code and generated bundle under `C:\Users\Public\Documents\WindowsSupportBundles`.
 
-There is no menu. The launcher runs the collector directly and keeps the result window open.
-
-## Actual script included
-
-The repository includes the functional collector:
-
-```text
-Collect-WindowsSupportBundle.ps1
-```
-
-This is not a placeholder or README-only repository. The script performs the collection, logging, validation and archive creation described below.
+The launcher runs `Collect-WindowsSupportBundle.ps1` directly. There is no menu.
 
 ## What it collects
 
 - Windows version, build, architecture, install date and last boot time
 - Manufacturer, model, domain status, processor and memory information
-- BIOS details and hardware serial information
-- Logical and physical disk information
+- BIOS, logical disk and physical disk details
 - Device Manager devices reporting errors
-- Local IP configuration, routes, proxy settings and network adapters
+- IP configuration, routes, proxy settings and network adapters
 - Installed applications and Windows hotfixes
-- Windows services and startup commands
+- Services and startup commands
 - Microsoft Defender, BitLocker and Windows Firewall status
 - Pending-restart indicators
-- Recent critical, error and warning events from the System and Application logs
-- A transcript, warning report, JSON manifest and privacy notice
+- Recent critical, error and warning events from System and Application logs
+- A transcript, collection-error report, JSON manifest and privacy notice
 
-The script does **not** collect passwords, browser data, saved credentials, email content or personal document contents.
+## Data-handling boundary
+
+The collector does not intentionally query browser history, email bodies, personal document contents, password stores or saved-credential APIs. However, diagnostic sources such as startup command lines, proxy output and Windows event messages can contain sensitive values supplied by third-party software.
+
+The script redacts common password, token, API-key and secret key/value patterns before writing startup commands, text reports and event messages. Pattern-based redaction is not exhaustive. **Review every generated file before sharing or uploading the bundle.**
+
+## Valid CSV behavior
+
+Every generated `.csv` file remains syntactically valid:
+
+- Normal collections contain their expected rows.
+- Empty collections contain a `CollectionStatus=NoData` status row.
+- Failed collections contain a `CollectionStatus=Failed` status row and direct the reviewer to `Logs\CollectionErrors.csv`.
+
+This allows automation and spreadsheet tools to ingest the reports without encountering plain text inside files named `.csv`.
 
 ## Requirements
 
-- Windows 10, Windows 11, or a supported Windows Server edition
+- Windows 10, Windows 11 or supported Windows Server
 - Windows PowerShell 5.1 or PowerShell 7+
-- Administrative PowerShell is recommended for the most complete results
+- Administrative PowerShell recommended for complete results
 
 ## PowerShell use
 
@@ -54,22 +54,9 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\Collect-WindowsSupportBundle.ps1
 ```
 
-The default output location is:
-
-```text
-C:\Users\Public\Documents\WindowsSupportBundles
-```
-
-The default result is a file similar to:
-
-```text
-WindowsSupportBundle_PC-NAME_20260622_183000.zip
-```
-
-## Examples
+Examples:
 
 ```powershell
-.\Collect-WindowsSupportBundle.ps1
 .\Collect-WindowsSupportBundle.ps1 -EventLogDays 7 -KeepWorkingFolder
 .\Collect-WindowsSupportBundle.ps1 -OutputPath 'C:\Support\Bundles'
 .\Collect-WindowsSupportBundle.ps1 -SkipEventLogs
@@ -82,50 +69,35 @@ WindowsSupportBundle_PC-NAME_20260622_183000.zip
 | Parameter | Purpose |
 |---|---|
 | `-OutputPath` | Parent folder for generated bundles |
-| `-EventLogDays` | Previous days of event data to collect; valid range is 1-30 |
+| `-EventLogDays` | Previous days of event data to collect; valid range 1–30 |
 | `-MaxEventsPerLog` | Maximum records collected from each event log |
-| `-SkipEventLogs` | Skips System and Application event collection |
-| `-SkipCompression` | Leaves the support bundle as a folder |
-| `-KeepWorkingFolder` | Keeps the folder after creating the ZIP |
-| `-WhatIf` | Shows the collection target without making output files |
-
-## Generated structure
-
-```text
-WindowsSupportBundle_<Computer>_<Timestamp>/
-├── CollectionContext.json
-├── Manifest.json
-├── README_FIRST.txt
-├── System/
-├── Hardware/
-├── Storage/
-├── Network/
-├── Security/
-├── Software/
-├── Services/
-├── Events/
-└── Logs/
-```
+| `-SkipEventLogs` | Skip System and Application event collection |
+| `-SkipCompression` | Leave the support bundle as a folder |
+| `-KeepWorkingFolder` | Keep the folder after creating the ZIP |
+| `-WhatIf` | Show the collection target without writing files |
 
 ## Exit codes
 
 | Code | Meaning |
 |---:|---|
 | `0` | All requested sections were collected |
-| `1` | A fatal error prevented successful completion |
-| `2` | The bundle was created, but one or more sections produced warnings |
+| `1` | A fatal error prevented completion |
+| `2` | Bundle created with one or more collection warnings |
 
-A code of `2` can occur when a Windows edition, device type, permissions level or security product does not provide one of the requested data sources. Review `Logs\CollectionErrors.csv` for details.
+## Validation
 
-## Safety and privacy
+Pull requests and pushes to `main` run a Windows GitHub Actions workflow that:
 
-This collector is read-only with respect to Windows configuration. It creates report files and may delete only its own temporary working folder after validating the ZIP archive.
+- Parses every `.ps1` file with PowerShell's native AST parser
+- Runs PSScriptAnalyzer and fails on error-severity findings
 
-Generated bundles can contain computer and user names, BIOS and disk serial numbers, local IP and MAC addresses, installed software, service account names and Windows event messages. Always review the output before uploading or sending it to another person. Do not publish real support bundles in this repository.
+Runtime output must still be reviewed on representative Windows versions because available CIM classes, event logs and security cmdlets vary by edition and installed roles.
 
-## Disclaimer
+## Safety
 
-Use this project at your own risk. Results can differ between Windows versions, editions, hardware, permissions, security products and organisational policies. Test in a safe environment and review the generated data before sharing it.
+The collector is read-only with respect to Windows configuration. It writes report files and deletes only its own working folder after the ZIP has been created and confirmed non-empty.
+
+Generated bundles may contain computer/user names, serial numbers, IP/MAC addresses, installed software, service account names and event details. Never publish a real support bundle in this repository.
 
 ## License
 
